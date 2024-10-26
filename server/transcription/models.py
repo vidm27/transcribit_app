@@ -1,53 +1,46 @@
+import secrets
+import uuid
+
 from django.db import models
 
+
+def generate_token():
+    return secrets.token_urlsafe(32)[:32]  # Return only the first 32 characters.
+
+
 class Transcription(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     path_file = models.FileField()
-    token_url = models.CharField(max_length=255)
+    token_url = models.CharField(max_length=255, unique=True, editable=False, default=generate_token)
     uploaded = models.DateTimeField(auto_now_add=True)
-    duration = models.TimeField()
-    language = models.CharField(max_length=25)
-    language_probability = models.FloatField()
-    topic = models.CharField(max_length=25)
-    tag = models.CharField(max_length=25)
+    duration = models.TimeField(null=True)
+    language = models.CharField(max_length=25, null=True)
+    language_probability = models.FloatField(null=True)
+    topic = models.CharField(max_length=25, null=True)
+    tag = models.CharField(max_length=25, null=True)
+    state = models.ForeignKey('State', on_delete=models.SET_NULL, null=True, default=1)
 
     def __str__(self):
-        return (f"Transcripción en {self.language} (probabilidad: {self.language_probability:.2f}), "
-                f"duración: {self.duration:.2f} segundos")
+        return (
+            f"Transcripción en {self.language is not None and self.language or 'Desconocido'} (probabilidad: {self.language_probability is not None and self.language_probability or 'Desconocido'}), "
+            f"duración: {self.duration is not None and self.duration or 'Desconocido'} segundos")
+
 
 class Segment(models.Model):
-    id = models.UUIDField(primary_key=True)
-    transcription_id = models.ForeignKey(Transcription, on_delete=models.CASCADE, related_name='segments')  # Aquí añades related_name
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    transcription = models.ForeignKey(Transcription, on_delete=models.CASCADE,
+                                      related_name='segments')  # Aquí añades related_name
     minutes_start = models.FloatField()
     minutes_end = models.FloatField()
-    segment_edit = models.CharField(max_length=255)
+    segment_edit = models.CharField(max_length=255, null=True)
     segment_original = models.CharField(max_length=255)
     uploaded = models.DateTimeField(auto_now_add=True)
     edited = models.DateTimeField(auto_now=True)
 
-# Create your models here.
-# table transcription {
-#   id uuid [pk]
-#   root_folder str
-#   child_folder str
-#   collection_id uuid
-#   path_file str
-#   token_url str
-#   statu_id int
-#   uploaded datetime
-#   duration time
-#   languaje str
-#   topic str
-#   tag str
-# }
-#
-# table segment{
-#   id uuid [pk]
-#   transcription_id uuid
-#   minutes_start float
-#   minutes_end float
-#   segment_edit str
-#   segment_original str
-#   uploaded datetime
-#   edited datetime
-# }
+
+class State(models.Model):
+    id = models.IntegerField(primary_key=True, editable=False)
+    name = models.CharField(max_length=255)
+
+    def __str__(self):
+        return self.name
