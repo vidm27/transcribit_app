@@ -18,7 +18,12 @@ class Transcription(models.Model):
     language_probability = models.FloatField(null=True)
     topic = models.CharField(max_length=25, null=True)
     tag = models.CharField(max_length=25, null=True)
-    state = models.ForeignKey('State', on_delete=models.SET_NULL, null=True, default=1)
+    state = models.ForeignKey('State', on_delete=models.SET_NULL, null=True)
+
+    def save(self, *args, **kwargs):
+        if not self.state:
+            self.state = State.objects.get(id=1)  # Aquí aseguras que el estado predeterminado sea el id 1
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return (
