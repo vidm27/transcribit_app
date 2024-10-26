@@ -2,7 +2,7 @@ from unittest.mock import MagicMock
 
 from faster_whisper import WhisperModel
 
-from src.audio_transcription.service.transcription_service import initialize_model, transcribe_audio, Transcription
+from transcription.audio_transcription.service.transcription_service import initialize_model, transcribe_audio, Transcription
 
 
 def test_initialize_model():
