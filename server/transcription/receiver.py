@@ -5,7 +5,7 @@ from faster_whisper import WhisperModel
 from loguru import logger
 
 from transcription.audio_transcription.model.transcription_model import SegmentModel, TranscriptionModel
-from transcription.models import Transcription, Segment
+from transcription.models import Transcription, Segment, State
 
 
 def initialize_model(model_size: str = "medium") -> WhisperModel:
@@ -41,7 +41,7 @@ def transcribe_audio(sender, instance, created, **kwargs) -> None:
             instance.language = transcription.language
             instance.language_probability = transcription.language_probability
             instance.duration = float_to_timefield(transcription.duration)
-            instance.state = 2
+            instance.state = State.objects.get(id=2)
             instance.save()
 
             logger.info(f"Create {len(segments_format)} segments")
@@ -51,6 +51,6 @@ def transcribe_audio(sender, instance, created, **kwargs) -> None:
             logger.debug(f"Created {len(segments_format)} segments")
         except Exception as e:
             logger.error(f"Error al crear la transcripción: {e}")
-            instance.state = 3
+            instance.state = State.objects.get(id=3)
             instance.save()
 
