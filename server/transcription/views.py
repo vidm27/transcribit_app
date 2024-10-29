@@ -7,7 +7,7 @@ from transcription.serializers import TranscriptionSerializer, SegmentSerializer
 
 class TranscriptionView(viewsets.ModelViewSet):
     serializer_class = TranscriptionSerializer
-    queryset = Transcription.objects.all()
+    queryset = Transcription.objects.select_related('state').all()
 
     def create(self, request, *args, **kwargs):
         transcription = super().create(request, *args, **kwargs)
