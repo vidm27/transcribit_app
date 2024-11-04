@@ -1,0 +1,1 @@
+export 'transcription_model.dart';
