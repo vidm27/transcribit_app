@@ -25,6 +25,11 @@ class HistoryNotifier extends StateNotifier<List<Transcription>> {
   bool isLoading = false;
   bool hasNextPage = false;
 
+  Future<void> refresh() async {
+    currentPage = 0;
+    loadNextPage();
+  }
+
   Future<void> loadNextPage() async {
     if (isLoading) return;
     isLoading = true;

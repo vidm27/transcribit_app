@@ -3,6 +3,8 @@ import 'dart:developer';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:transcribit_app/features/history/providers/history_provider.dart';
 import 'package:transcribit_app/features/transcription/models/transcription_model.dart';
 import 'package:transcribit_app/features/transcription/providers/providers.dart';
 
@@ -20,6 +22,7 @@ class _TranscriptionDetailPageState
     extends ConsumerState<TranscriptionDetailPage>
     with TickerProviderStateMixin {
   TabController? tabController;
+  bool isEditing = false;
 
   // final _selectedColor = const Color(0xff1a73e8);
   // final _unselectedColor = const Color(0xff5f6368);
@@ -27,125 +30,227 @@ class _TranscriptionDetailPageState
   void initState() {
     super.initState();
     tabController = TabController(length: 2, vsync: this);
-  }
 
-  @override
-  void dispose() {
-    // tabController?.dispose();
-    // audioPlayer.dispose();
-    super.dispose();
+    Future.microtask(() {
+      ref.read(transcriptionDetailNotifierProvider.notifier).getTranscription(
+            widget.idTranscription,
+          );
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final transcription =
-        ref.watch(transcriptionDetailProvider(widget.idTranscription));
-
+    final transcriptionState = ref.watch(transcriptionDetailNotifierProvider);
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Transcripción'),
+        title: isEditing
+            ? TextFormField(
+                initialValue: transcriptionState.transcription.title,
+                onChanged: ref
+                    .read(transcriptionDetailNotifierProvider.notifier)
+                    .updateTitleTranscription,
+                style: const TextStyle(color: Colors.black),
+                textAlign: TextAlign.left,
+                decoration: const InputDecoration(
+                  border: InputBorder.none,
+                ),
+              )
+            : Text(
+                transcriptionState.transcription.title!.isEmpty
+                    ? "No tiene título"
+                    : transcriptionState.transcription.title!,
+              ),
       ),
-      body: transcription.when(
-        data: (data) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Container(
-                  padding: const EdgeInsets.all(5.0),
-                  height: MediaQuery.of(context).size.height * 0.05,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(10.0),
-                    color: Colors.grey[300],
-                  ),
-                  child: TabBar(
-                      indicatorSize: TabBarIndicatorSize.tab,
-                      dividerColor: Colors.transparent,
-                      controller: tabController,
-                      indicator: const BoxDecoration(
-                          borderRadius: BorderRadius.all(Radius.circular(5)),
-                          color: Colors.white),
-                      labelColor: Colors.black,
-                      unselectedLabelColor: Colors.black,
-                      tabs: const [
-                        Tab(text: 'Transcripción'),
-                        Tab(text: 'Audio'),
-                      ]),
-                ),
-              ),
-              Expanded(
-                child: TabBarView(controller: tabController, children: [
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: _TranscriptionTextWidget(transcription: data),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: _TranscriptionAudioWidget(
-                        idTranscription: data.id, duration: data.duration!),
-                  )
-                ]),
-              ),
-              Container(
-                height: 100,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF2C45B3),
-                  borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(15.0),
-                      topRight: Radius.circular(15.0)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withOpacity(0.5),
-                      spreadRadius: 5,
-                      blurRadius: 7,
-                      offset: const Offset(0, 3),
+      body: transcriptionState.isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Container(
+                    padding: const EdgeInsets.all(5.0),
+                    height: MediaQuery.of(context).size.height * 0.05,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10.0),
+                      color: Colors.grey[300],
                     ),
-                  ],
+                    child: TabBar(
+                        indicatorSize: TabBarIndicatorSize.tab,
+                        dividerColor: Colors.transparent,
+                        controller: tabController,
+                        indicator: const BoxDecoration(
+                            borderRadius: BorderRadius.all(Radius.circular(5)),
+                            color: Colors.white),
+                        labelColor: Colors.black,
+                        unselectedLabelColor: Colors.black,
+                        tabs: const [
+                          Tab(text: 'Transcripción'),
+                          Tab(text: 'Audio'),
+                        ]),
+                  ),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    IconButton(
+                Expanded(
+                  child: TabBarView(controller: tabController, children: [
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: _TranscriptionTextWidget(
+                        transcription: transcriptionState.transcription,
+                        isEditing: isEditing,
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: _TranscriptionAudioWidget(
+                          idTranscription: transcriptionState.transcription.id,
+                          duration: transcriptionState.transcription.duration!),
+                    )
+                  ]),
+                ),
+                Container(
+                  height: 100,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2C45B3),
+                    borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(15.0),
+                        topRight: Radius.circular(15.0)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.5),
+                        spreadRadius: 5,
+                        blurRadius: 7,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      IconButton(
+                          icon: const Icon(
+                            Icons.ios_share_rounded,
+                            color: Colors.white,
+                            size: 30,
+                          ),
+                          onPressed: () {}),
+                      IconButton(
                         icon: const Icon(
-                          Icons.ios_share_rounded,
+                          Icons.delete_rounded,
                           color: Colors.white,
                           size: 30,
                         ),
-                        onPressed: () {}),
-                    IconButton(
-                      icon: const Icon(
-                        Icons.delete_rounded,
-                        color: Colors.white,
-                        size: 30,
+                        onPressed: () {
+                          showModalDelete();
+                        },
                       ),
-                      onPressed: () {},
+                      isEditing
+                          ? IconButton(
+                              icon: const Icon(Icons.save_rounded,
+                                  color: Colors.white, size: 30),
+                              onPressed: () {
+                                setState(() {
+                                  isEditing = !isEditing;
+                                });
+                                ref
+                                    .read(transcriptionDetailNotifierProvider
+                                        .notifier)
+                                    .updateTranscription();
+                              },
+                            )
+                          : IconButton(
+                              icon: const Icon(
+                                Icons.edit_rounded,
+                                color: Colors.white,
+                                size: 30,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  isEditing = !isEditing;
+                                });
+                              },
+                            ),
+                    ],
+                  ),
+                )
+              ],
+            ),
+    );
+  }
+
+  void showModalDelete() {
+    showModalBottomSheet(
+        context: context,
+        builder: (context) {
+          return Container(
+            height: 200,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(15.0),
+                  topRight: Radius.circular(15.0)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.5),
+                  spreadRadius: 5,
+                  blurRadius: 7,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                const Padding(
+                  padding: EdgeInsets.all(8.0),
+                  child: Text(
+                    "¿Desea eliminar la transcripción?",
+                    style: TextStyle(
+                      fontSize: 20.0,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
                     ),
-                    IconButton(
-                      icon: const Icon(
-                        Icons.edit_rounded,
-                        color: Colors.white,
-                        size: 30,
-                      ),
-                      onPressed: () {},
+                  ),
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    TextButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                        },
+                        child: const Text("No")),
+                    TextButton(
+                        style: TextButton.styleFrom(
+                          backgroundColor: const Color(0xFF2C45B3),
+                          foregroundColor: Colors.white,
+                        ),
+                        onPressed: () {
+                          Navigator.pop(context);
+                          ref
+                              .read(
+                                  transcriptionDetailNotifierProvider.notifier)
+                              .deleteTranscription(widget.idTranscription);
+                          context.pop();
+                          ref.read(historyNotifierProvider.notifier).refresh();
+                        },
+                        child: const Text("Si")),
+                    const SizedBox(
+                      width: 15,
                     ),
                   ],
-                ),
-              )
-            ],
+                )
+              ],
+            ),
           );
-        },
-        error: (error, stackTrace) => Text('Error, $error, $stackTrace'),
-        loading: () => const Center(child: CircularProgressIndicator()),
-      ),
-    );
+        });
   }
 }
 
-class _TranscriptionTextWidget extends StatelessWidget {
+class _TranscriptionTextWidget extends ConsumerWidget {
   final TranscriptionDb transcription;
-  const _TranscriptionTextWidget({super.key, required this.transcription});
+  final bool isEditing;
+  const _TranscriptionTextWidget(
+      {super.key, required this.transcription, this.isEditing = false});
 
   Map<String, dynamic> tiempoToTextFormat(Segment segment) {
     final minutosInicio = segment.minutesStart.floor();
@@ -163,7 +268,7 @@ class _TranscriptionTextWidget extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.start,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -196,22 +301,32 @@ class _TranscriptionTextWidget extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          "${tiempoFormateado["start"]} - ${tiempoFormateado["end"]}",
-                          style: TextStyle(
-                            fontSize: 14.0,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.grey[700],
-                          ),
-                        ),
+                        durationWidget(tiempoFormateado),
                         const SizedBox(
                           height: 3,
                         ),
-                        Text(segment.segmentOriginal,
-                            style: const TextStyle(
-                                fontSize: 16.0,
-                                color: Colors.black,
-                                fontWeight: FontWeight.w600)),
+                        isEditing
+                            ? TextFormField(
+                                maxLines: (segment.segmentOriginal.length / 50)
+                                    .ceil(),
+                                initialValue: segment.segmentOriginal,
+                                onChanged: (value) {
+                                  ref
+                                      .read(transcriptionDetailNotifierProvider
+                                          .notifier)
+                                      .updateSegmentsTranscription(
+                                          segment.id, value);
+                                },
+                                decoration: const InputDecoration(
+                                    border: InputBorder.none),
+                              )
+                            : Text(
+                                segment.segmentOriginal,
+                                style: const TextStyle(
+                                    fontSize: 16.0,
+                                    color: Colors.black,
+                                    fontWeight: FontWeight.w600),
+                              ),
                         const SizedBox(
                           height: 2,
                         ),
@@ -222,6 +337,17 @@ class _TranscriptionTextWidget extends StatelessWidget {
               }),
         ),
       ],
+    );
+  }
+
+  Text durationWidget(Map<String, dynamic> tiempoFormateado) {
+    return Text(
+      "${tiempoFormateado["start"]} - ${tiempoFormateado["end"]}",
+      style: TextStyle(
+        fontSize: 14.0,
+        fontWeight: FontWeight.bold,
+        color: Colors.grey[700],
+      ),
     );
   }
 }

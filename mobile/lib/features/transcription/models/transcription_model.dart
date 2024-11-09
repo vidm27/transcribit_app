@@ -1,4 +1,6 @@
+// ignore_for_file: public_member_api_docs, sort_constructors_first
 import 'dart:convert';
+
 
 TranscriptionDb transcriptionDbFromJson(String str) =>
     TranscriptionDb.fromJson(json.decode(str));
@@ -35,6 +37,23 @@ class TranscriptionDb {
     required this.tag,
   });
 
+  factory TranscriptionDb.initial() {
+    return TranscriptionDb(
+      id: "",
+      state: "",
+      segments: [],
+      pathFile: "",
+      title: "",
+      tokenUrl: "",
+      uploaded: DateTime.now(),
+      duration: "",
+      language: "",
+      languageProbability: 0.0,
+      topic: "",
+      tag: "",
+    );
+  }
+
   factory TranscriptionDb.fromJson(Map<String, dynamic> json) =>
       TranscriptionDb(
         id: json["id"],
@@ -66,6 +85,36 @@ class TranscriptionDb {
         "topic": topic,
         "tag": tag,
       };
+
+  TranscriptionDb copyWith({
+    String? id,
+    String? state,
+    List<Segment>? segments,
+    String? pathFile,
+    String? title,
+    String? tokenUrl,
+    DateTime? uploaded,
+    String? duration,
+    String? language,
+    double? languageProbability,
+    String? topic,
+    String? tag,
+  }) {
+    return TranscriptionDb(
+      id: id ?? this.id,
+      state: state ?? this.state,
+      segments: segments ?? this.segments,
+      pathFile: pathFile ?? this.pathFile,
+      title: title ?? this.title,
+      tokenUrl: tokenUrl ?? this.tokenUrl,
+      uploaded: uploaded ?? this.uploaded,
+      duration: duration ?? this.duration,
+      language: language ?? this.language,
+      languageProbability: languageProbability ?? this.languageProbability,
+      topic: topic ?? this.topic,
+      tag: tag ?? this.tag,
+    );
+  }
 }
 
 class Segment {
@@ -110,4 +159,26 @@ class Segment {
         "edited": edited.toIso8601String(),
         "transcription": transcription,
       };
+
+  Segment copyWith({
+    String? id,
+    double? minutesStart,
+    double? minutesEnd,
+    dynamic? segmentEdit,
+    String? segmentOriginal,
+    DateTime? uploaded,
+    DateTime? edited,
+    String? transcription,
+  }) {
+    return Segment(
+      id: id ?? this.id,
+      minutesStart: minutesStart ?? this.minutesStart,
+      minutesEnd: minutesEnd ?? this.minutesEnd,
+      segmentEdit: segmentEdit ?? this.segmentEdit,
+      segmentOriginal: segmentOriginal ?? this.segmentOriginal,
+      uploaded: uploaded ?? this.uploaded,
+      edited: edited ?? this.edited,
+      transcription: transcription ?? this.transcription,
+    );
+  }
 }

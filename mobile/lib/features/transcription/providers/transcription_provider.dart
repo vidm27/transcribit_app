@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:transcribit_app/config/config.dart';
+import 'package:transcribit_app/features/transcription/datasource/transcriptiondb_datasource_impl.dart';
 import 'package:transcribit_app/features/transcription/models/models.dart';
 
 class TranscriptionState {
@@ -105,6 +106,42 @@ class FileUploadNotifier extends StateNotifier<TranscriptionState> {
   }
 }
 
+class TranscriptionDetailState {
+  final TranscriptionDb transcription;
+  final bool isLoading;
+  final bool hasError;
+  final String? errorMessage;
+
+  TranscriptionDetailState({
+    required this.transcription,
+    required this.isLoading,
+    required this.hasError,
+    this.errorMessage,
+  });
+
+  factory TranscriptionDetailState.initial() {
+    return TranscriptionDetailState(
+      transcription: TranscriptionDb.initial(),
+      isLoading: true,
+      hasError: false,
+    );
+  }
+
+  TranscriptionDetailState copyWith({
+    TranscriptionDb? transcription,
+    bool? isLoading,
+    bool? hasError,
+    String? errorMessage,
+  }) {
+    return TranscriptionDetailState(
+      transcription: transcription ?? this.transcription,
+      isLoading: isLoading ?? this.isLoading,
+      hasError: hasError ?? this.hasError,
+      errorMessage: errorMessage ?? this.errorMessage,
+    );
+  }
+}
+
 final transcriptionProvider =
     StateNotifierProvider<FileUploadNotifier, TranscriptionState>(
         (ref) => FileUploadNotifier());
@@ -122,18 +159,60 @@ final transcriptionDetailProvider =
   return TranscriptionDb.fromJson(response.data);
 });
 
-class TranscriptionProvider extends StateNotifier<TranscriptionDb> {
-  TranscriptionProvider(super.state);
+class TranscriptionProvider extends StateNotifier<TranscriptionDetailState> {
+  final TranscriptiondbDatasourceImpl datasource;
+  TranscriptionProvider({required this.datasource})
+      : super(TranscriptionDetailState.initial());
 
   setup() {}
 
   Future<void> getTranscription(String id) async {
-    final dio = Dio(apiConfig);
-    final response = await dio.get('/transcription/$id');
-    if (response.statusCode != 200) {
-      log("Error getting transcription: ${response.statusCode}", level: 2);
-      throw Exception('Failed to load transcription');
+    state = state.copyWith(isLoading: true);
+    final response = await datasource.getTranscription(id);
+    state = state.copyWith(transcription: response, isLoading: false);
+  }
+
+  Future<void> updateTitleTranscription(String title) async {
+    final transcription = state.transcription.copyWith(title: title);
+    state = state.copyWith(transcription: transcription);
+  }
+
+  Future<void> updateSegmentsTranscription(
+      String idSegment, String text) async {
+    final segments = state.transcription.segments;
+
+    for (int i = 0; i < segments.length; i++) {
+      final segment = segments[i];
+      if (segment.id == idSegment) {
+        segments[i] = segment.copyWith(segmentOriginal: text);
+      }
     }
-    state = TranscriptionDb.fromJson(response.data);
+
+    final transcription = state.transcription.copyWith(segments: segments);
+    state = state.copyWith(transcription: transcription);
+  }
+
+  Future<void> updateTranscription() async {
+    final transcription = state.transcription;
+    await datasource.updateTitleTranscription(
+        id: transcription.id, title: transcription.title ?? "");
+    for (int i = 0; i < transcription.segments.length; i++) {
+      final segment = transcription.segments[i];
+      await datasource.updateSegmentTranscription(segment);
+    }
+  }
+
+  Future<void> deleteTranscription(String id) async {
+    state = state.copyWith(isLoading: true);
+    final response = await datasource.deleteTranscription(id);
+    if (response["status"] == "success") {
+      state = state.copyWith(transcription: TranscriptionDb.initial(), isLoading: false);
+    }
   }
 }
+
+final transcriptionDetailNotifierProvider = StateNotifierProvider.autoDispose<
+    TranscriptionProvider, TranscriptionDetailState>((ref) {
+  final datasource = TranscriptiondbDatasourceImpl();
+  return TranscriptionProvider(datasource: datasource);
+});
