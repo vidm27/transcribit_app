@@ -118,6 +118,22 @@ final transcriptionDetailProvider =
     log("Error getting transcription: ${response.statusCode}", level: 2);
     throw Exception('Failed to load transcription');
   }
-  log("Transcription loaded: ${response.data}", level: 2);
+  // log("Transcription loaded: ${response.data}", level: 2);
   return TranscriptionDb.fromJson(response.data);
 });
+
+class TranscriptionProvider extends StateNotifier<TranscriptionDb> {
+  TranscriptionProvider(super.state);
+
+  setup() {}
+
+  Future<void> getTranscription(String id) async {
+    final dio = Dio(apiConfig);
+    final response = await dio.get('/transcription/$id');
+    if (response.statusCode != 200) {
+      log("Error getting transcription: ${response.statusCode}", level: 2);
+      throw Exception('Failed to load transcription');
+    }
+    state = TranscriptionDb.fromJson(response.data);
+  }
+}
