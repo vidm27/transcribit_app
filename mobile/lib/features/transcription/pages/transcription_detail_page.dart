@@ -42,56 +42,104 @@ class _TranscriptionDetailPageState
         ref.watch(transcriptionDetailProvider(widget.idTranscription));
 
     return Scaffold(
-        backgroundColor: Colors.white,
-        appBar: AppBar(
-          title: const Text('Transcripción'),
-        ),
-        body: SafeArea(
-          child: Padding(
-              padding: const EdgeInsets.all(14.0),
-              child: transcription.when(
-                data: (data) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(5.0),
-                        height: MediaQuery.of(context).size.height * 0.05,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(10.0),
-                          color: Colors.grey[300],
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text('Transcripción'),
+      ),
+      body: transcription.when(
+        data: (data) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Container(
+                  padding: const EdgeInsets.all(5.0),
+                  height: MediaQuery.of(context).size.height * 0.05,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10.0),
+                    color: Colors.grey[300],
+                  ),
+                  child: TabBar(
+                      indicatorSize: TabBarIndicatorSize.tab,
+                      dividerColor: Colors.transparent,
+                      controller: tabController,
+                      indicator: const BoxDecoration(
+                          borderRadius: BorderRadius.all(Radius.circular(5)),
+                          color: Colors.white),
+                      labelColor: Colors.black,
+                      unselectedLabelColor: Colors.black,
+                      tabs: const [
+                        Tab(text: 'Transcripción'),
+                        Tab(text: 'Audio'),
+                      ]),
+                ),
+              ),
+              Expanded(
+                child: TabBarView(controller: tabController, children: [
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: _TranscriptionTextWidget(transcription: data),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: _TranscriptionAudioWidget(
+                        idTranscription: data.id, duration: data.duration!),
+                  )
+                ]),
+              ),
+              Container(
+                height: 100,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2C45B3),
+                  borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(15.0),
+                      topRight: Radius.circular(15.0)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.5),
+                      spreadRadius: 5,
+                      blurRadius: 7,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    IconButton(
+                        icon: const Icon(
+                          Icons.ios_share_rounded,
+                          color: Colors.white,
+                          size: 30,
                         ),
-                        child: TabBar(
-                            indicatorSize: TabBarIndicatorSize.tab,
-                            dividerColor: Colors.transparent,
-                            controller: tabController,
-                            indicator: const BoxDecoration(
-                                borderRadius:
-                                    BorderRadius.all(Radius.circular(5)),
-                                color: Colors.white),
-                            labelColor: Colors.black,
-                            unselectedLabelColor: Colors.black,
-                            tabs: const [
-                              Tab(text: 'Transcripción'),
-                              Tab(text: 'Audio'),
-                            ]),
+                        onPressed: () {}),
+                    IconButton(
+                      icon: const Icon(
+                        Icons.delete_rounded,
+                        color: Colors.white,
+                        size: 30,
                       ),
-                      Expanded(
-                        child: TabBarView(controller: tabController, children: [
-                          _TranscriptionTextWidget(transcription: data),
-                          _TranscriptionAudioWidget(
-                              idTranscription: data.id,
-                              duration: data.duration!)
-                        ]),
-                      )
-                    ],
-                  );
-                },
-                error: (error, stackTrace) =>
-                    Text('Error, $error, $stackTrace'),
-                loading: () => const Center(child: CircularProgressIndicator()),
-              )),
-        ));
+                      onPressed: () {},
+                    ),
+                    IconButton(
+                      icon: const Icon(
+                        Icons.edit_rounded,
+                        color: Colors.white,
+                        size: 30,
+                      ),
+                      onPressed: () {},
+                    ),
+                  ],
+                ),
+              )
+            ],
+          );
+        },
+        error: (error, stackTrace) => Text('Error, $error, $stackTrace'),
+        loading: () => const Center(child: CircularProgressIndicator()),
+      ),
+    );
   }
 }
 
@@ -199,6 +247,14 @@ class _TranscriptionAudioWidgetState extends State<_TranscriptionAudioWidget> {
   void initState() {
     super.initState();
     _initAudio();
+  }
+
+  @override
+  void dispose() {
+    if (mounted) {
+      audioPlayer.dispose();
+    }
+    super.dispose();
   }
 
   void _initAudio() async {
