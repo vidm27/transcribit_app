@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:transcribit_app/features/transcription/providers/providers.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -14,6 +15,14 @@ class HomePage extends ConsumerStatefulWidget {
 }
 
 class _HomePageState extends ConsumerState<HomePage> {
+  bool _isRecording = false;
+
+  void _toggleRecording() {
+    setState(() {
+      _isRecording = !_isRecording;
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -194,7 +203,181 @@ class _HomePageState extends ConsumerState<HomePage> {
                                 style: TextStyle(color: Colors.white))
                           ],
                         ),
-                        onPressed: () {},
+                        onPressed: () {
+                          showModalBottomSheet(
+                              isScrollControlled: true,
+                              context: context,
+                              builder: (context) {
+                                return FractionallySizedBox(
+                                  heightFactor: 0.70,
+                                  child: SizedBox(
+                                    width: MediaQuery.of(context).size.width,
+                                    child: Column(
+                                      children: [
+                                        Padding(
+                                          padding: const EdgeInsets.all(12.0),
+                                          child: Row(
+                                            children: [
+                                              CircleAvatar(
+                                                radius: 20.0,
+                                                backgroundColor:
+                                                    Colors.grey[300],
+                                                child: const Icon(
+                                                  Icons.close,
+                                                  color: Colors.black,
+                                                ),
+                                              ),
+                                              const Spacer(),
+                                              Wrap(
+                                                spacing: 10.0,
+                                                children: [
+                                                  IconButton(
+                                                    onPressed: () {},
+                                                    icon: Icon(
+                                                      Icons.delete_outline,
+                                                      color: Colors.grey[500],
+                                                    ),
+                                                  ),
+                                                  IconButton(
+                                                    onPressed: () {},
+                                                    icon: Icon(
+                                                      Icons.ios_share_outlined,
+                                                      color: Colors.grey[500],
+                                                    ),
+                                                  ),
+                                                ],
+                                              )
+                                            ],
+                                          ),
+                                        ),
+                                        Padding(
+                                          padding: const EdgeInsets.all(12.0),
+                                          child: TextFormField(
+                                            decoration: const InputDecoration(
+                                              border: InputBorder.none,
+                                              hintText:
+                                                  'Introduce el título de la transcripción',
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 50.0),
+                                        Padding(
+                                          padding: const EdgeInsets.all(12.0),
+                                          child: Stack(
+                                            alignment: Alignment.center,
+                                            children: [
+                                              Container(
+                                                height: 110,
+                                                width: 110,
+                                                decoration: const BoxDecoration(
+                                                  shape: BoxShape.circle,
+                                                  color: Color(0xFFFDEBEB),
+                                                ),
+                                              )
+                                                  .animate(
+                                                    onPlay: (controller) =>
+                                                        controller.repeat(
+                                                            reverse: true),
+                                                  )
+                                                  .fadeIn(
+                                                    duration: 600.ms,
+                                                  )
+                                                  .scale(
+                                                    duration: 600.ms,
+                                                    begin:
+                                                        const Offset(1.0, 1.0),
+                                                    end: const Offset(1.3, 1.3),
+                                                  ),
+                                              Container(
+                                                height: 90,
+                                                width: 90,
+                                                decoration: const BoxDecoration(
+                                                    color: Color(0xFFFCDEDE),
+                                                    shape: BoxShape.circle),
+                                              )
+                                                  .animate(
+                                                    onPlay: (controller) =>
+                                                        controller.repeat(
+                                                            reverse: true),
+                                                  )
+                                                  .fadeIn(
+                                                    duration: 600.ms,
+                                                  )
+                                                  .scale(
+                                                    duration: 600.ms,
+                                                    begin:
+                                                        const Offset(1.0, 1.0),
+                                                    end: const Offset(1.2, 1.2),
+                                                  ),
+                                              Container(
+                                                height: 70,
+                                                width: 70,
+                                                decoration: const BoxDecoration(
+                                                  shape: BoxShape.circle,
+                                                  color: Color(0xFFD76060),
+                                                ),
+                                                child: const Icon(
+                                                  Icons.mic,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const Spacer(),
+                                        Container(
+                                          color: const Color(0xFF607EFF),
+                                          width: double.infinity,
+                                          padding: const EdgeInsets.all(10.0),
+                                          height: 100,
+                                          child: Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              GestureDetector(
+                                                onTap: () {},
+                                                child: const CircleAvatar(
+                                                  radius: 20.0,
+                                                  backgroundColor:
+                                                      Color(0xFF222F6E),
+                                                  child: Icon(
+                                                    Icons.pause,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(
+                                                width: 10.0,
+                                              ),
+                                              GestureDetector(
+                                                child: const CircleAvatar(
+                                                  radius: 30.0,
+                                                  backgroundColor:
+                                                      Color(0xFF222F6E),
+                                                  child: Icon(
+                                                    Icons.stop,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(
+                                                width: 10.0,
+                                              ),
+                                              const Text(
+                                                '0:00',
+                                                style: TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 25.0),
+                                              )
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              });
+                        },
                       ),
                       const SizedBox(
                         height: 10,
