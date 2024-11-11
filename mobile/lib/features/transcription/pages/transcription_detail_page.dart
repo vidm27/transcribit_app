@@ -1,11 +1,10 @@
-import 'dart:developer';
 
-import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:transcribit_app/features/history/providers/history_provider.dart';
 import 'package:transcribit_app/features/transcription/models/transcription_model.dart';
+import 'package:transcribit_app/features/transcription/providers/player_provider.dart';
 import 'package:transcribit_app/features/transcription/providers/providers.dart';
 
 class TranscriptionDetailPage extends ConsumerStatefulWidget {
@@ -352,96 +351,60 @@ class _TranscriptionTextWidget extends ConsumerWidget {
   }
 }
 
-class _TranscriptionAudioWidget extends StatefulWidget {
+class _TranscriptionAudioWidget extends ConsumerWidget {
   final String idTranscription;
   final String duration;
+
   const _TranscriptionAudioWidget(
-      {super.key, required this.idTranscription, required this.duration});
-
-  @override
-  State<_TranscriptionAudioWidget> createState() =>
-      _TranscriptionAudioWidgetState();
-}
-
-class _TranscriptionAudioWidgetState extends State<_TranscriptionAudioWidget> {
-  bool isPlaying = false;
-  final AudioPlayer audioPlayer = AudioPlayer();
-  Duration duration = Duration.zero;
-  Duration position = Duration.zero;
-
-  @override
-  void initState() {
-    super.initState();
-    _initAudio();
-  }
-
-  @override
-  void dispose() {
-    if (mounted) {
-      audioPlayer.dispose();
-    }
-    super.dispose();
-  }
-
-  void _initAudio() async {
-    log("Init audio", level: 2);
-    audioPlayer.onPlayerStateChanged.listen((state) async {
-      log("State: $state", level: 2);
-      setState(() {
-        isPlaying = state == PlayerState.playing;
-      });
-      if (state == PlayerState.playing && duration == Duration.zero) {
-        final currentDuration = await audioPlayer.getDuration();
-        setState(() {
-          duration = currentDuration!;
-        });
-      }
-    });
-
-    audioPlayer.onDurationChanged.listen((newDuration) {
-      log("Duration: $newDuration", level: 2);
-      setState(() {
-        duration = newDuration;
-      });
-    });
-
-    audioPlayer.onPositionChanged.listen((newPosition) async {
-      setState(() {
-        position = newPosition;
-      });
-    });
-    log("Init audio done", level: 2);
-  }
+      {required this.idTranscription, required this.duration});
 
   Duration tiempoToDuration(String tiempo) {
     var partes = tiempo.split(':');
     int minutos = int.parse(partes[0]);
     int segundos = int.parse(partes[1]);
-
     int milisegundos = partes.length > 2 ? int.parse(partes[2]) : 0;
     return Duration(
         minutes: minutos, seconds: segundos, milliseconds: milisegundos);
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final audioPlayerState = ref.watch(audioPlayerProvider);
+    final audioController = ref.read(audioPlayerProvider.notifier);
+
+    ref.listen(audioPlayerProvider, (previous, next) {
+      if (audioPlayerState.duration == Duration.zero) {
+        audioController.setDuration(tiempoToDuration(duration));
+      }
+    });
+
+    final maxDuration = audioPlayerState.duration.inSeconds.toDouble() > 0
+        ? audioPlayerState.duration.inSeconds.toDouble()
+        : 1.0;
+
     return Column(
-      key: const ValueKey(2),
       children: [
-        Slider(
-            min: 0,
-            max: duration.inSeconds.toDouble(),
-            value: position.inSeconds.clamp(0, duration.inSeconds).toDouble(),
-            onChanged: (double value) async {
-              position = Duration(seconds: value.toInt());
-              await audioPlayer.seek(position);
-              await audioPlayer.resume();
+        TweenAnimationBuilder(
+            tween: Tween<double>(
+                begin: 0.0,
+                end: audioPlayerState.duration.inSeconds.toDouble()),
+            duration: const Duration(milliseconds: 300),
+            builder: (context, value, child) {
+              return Slider(
+                min: 0,
+                max: maxDuration,
+                value: audioPlayerState.position.inSeconds.toDouble(),
+                onChanged: (double newValue) async {
+                  audioController.seek(Duration(seconds: newValue.toInt()));
+                  audioController.play();
+                },
+              );
             }),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              "${position.inMinutes.toString().padLeft(2, '0')}:${(position.inSeconds % 60).toString().padLeft(2, '0')}",
+              "${audioPlayerState.position.inMinutes.toString().padLeft(2, '0')}:${(audioPlayerState.position.inSeconds % 60).toString().padLeft(2, '0')}",
               style: const TextStyle(
                 fontSize: 16.0,
                 color: Colors.black,
@@ -449,31 +412,28 @@ class _TranscriptionAudioWidgetState extends State<_TranscriptionAudioWidget> {
             ),
             const Spacer(),
             Text(
-                "${duration.inMinutes.toString().padLeft(2, '0')}:${(duration.inSeconds % 60).toString().padLeft(2, '0')}",
-                style: const TextStyle())
+              "${audioPlayerState.duration.inMinutes.toString().padLeft(2, '0')}:${(audioPlayerState.duration.inSeconds % 60).toString().padLeft(2, '0')}",
+              style: const TextStyle(),
+            ),
           ],
         ),
         CircleAvatar(
           radius: 30,
           child: IconButton(
-            onPressed: () async {
-              if (audioPlayer.state == PlayerState.playing) {
-                audioPlayer.pause();
+            onPressed: () {
+              if (audioPlayerState.isPlaying) {
+                audioController.pause();
               } else {
+                final currentDuration = tiempoToDuration(duration);
                 final url =
-                    'http://127.0.0.1:8000/api/v1/audio/${widget.idTranscription}';
-                await audioPlayer.setSourceUrl(url);
-                await audioPlayer.resume();
-                setState(() {
-                  isPlaying = true;
-                  duration = tiempoToDuration(widget.duration);
-                });
+                    'http://127.0.0.1:8000/api/v1/audio/$idTranscription';
+                audioController.init(url);
+                audioController.setDuration(currentDuration);
+                audioController.play();
               }
             },
             icon: Icon(
-              audioPlayer.state == PlayerState.playing
-                  ? Icons.pause
-                  : Icons.play_arrow,
+              audioPlayerState.isPlaying ? Icons.pause : Icons.play_arrow,
               size: 40,
             ),
           ),
