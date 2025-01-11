@@ -47,11 +47,13 @@ class HistoryNotifier extends StateNotifier<List<Transcription>> {
       log("Error getting history: ${response.statusCode}", level: 2);
       throw Exception('Failed to load history');
     }
-    if (transcription.next != null) {
+    log("Next page loaded: ${transcription.next?.length}", level: 2);
+    if (transcription.next?.isNotEmpty == true) {
       hasNextPage = true;
     } else {
       hasNextPage = false;
     }
+    log("Has next page: $hasNextPage", level: 2);
     // log("History loaded: ${response.data}", level: 2);
     state = [...state, ...transcription.results];
     isLoading = false;
