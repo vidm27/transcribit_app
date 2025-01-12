@@ -10,7 +10,8 @@ def generate_token():
 
 class Transcription(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    path_file = models.FileField()
+    path_file = models.FileField(null=True)
+    title = models.CharField(max_length=255, null=True)
     token_url = models.CharField(max_length=255, unique=True, editable=False, default=generate_token)
     uploaded = models.DateTimeField(auto_now_add=True)
     duration = models.TimeField(null=True)
@@ -21,9 +22,14 @@ class Transcription(models.Model):
     state = models.ForeignKey('State', on_delete=models.SET_NULL, null=True)
 
     def save(self, *args, **kwargs):
-        if not self.state:
-            self.state = State.objects.get(id=1)  # Aquí aseguras que el estado predeterminado sea el id 1
-        super().save(*args, **kwargs)
+        try:
+            if not self.state:
+                self.state = State.objects.get(id=1)  # Aquí aseguras que el estado predeterminado sea el id 1
+            super().save(*args, **kwargs)
+            print(f"Transcripción guardada: {self}")
+        except Exception as e:
+            print(f"Error al guardar la transcripción: {e}")
+            raise
 
     def __str__(self):
         return (

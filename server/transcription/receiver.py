@@ -25,7 +25,7 @@ def transcribe_audio(sender, instance, created, **kwargs) -> None:
         logger.info("Transcribing audio...")
         logger.info(f"Sender: {sender}, Instance: {instance}")
         model = initialize_model()
-        current_segments, info = model.transcribe(instance.path_file, beam_size=5)
+        current_segments, info = model.transcribe(instance.path_file)
         logger.info(f"Segments: {current_segments}")
         segments_format = []
         for segment in current_segments:
