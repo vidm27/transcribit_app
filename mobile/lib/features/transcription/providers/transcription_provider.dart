@@ -67,15 +67,19 @@ class FileUploadNotifier extends StateNotifier<TranscriptionState> {
   }
 
   Future<void> uploadFile() async {
+    log("Uploading file: ${state.filePath}", level: 2);
+    final filePath = state.filePath!;
+    final fileName = filePath.split('/').last;
     FormData formData = FormData.fromMap({
-      'path_file': await MultipartFile.fromFile(state.filePath!),
+      'path_file': await MultipartFile.fromFile(filePath, filename: fileName),
     });
     try {
       state = state.copyWith(
         isUploading: true,
       );
-      final response = await _dio.post(
+      final response = await _dio.request(
         '/transcription/',
+        options: Options(method: 'POST'),
         data: formData,
         onSendProgress: (count, total) {
           double newProgress = count / total;
@@ -206,7 +210,8 @@ class TranscriptionProvider extends StateNotifier<TranscriptionDetailState> {
     state = state.copyWith(isLoading: true);
     final response = await datasource.deleteTranscription(id);
     if (response["status"] == "success") {
-      state = state.copyWith(transcription: TranscriptionDb.initial(), isLoading: false);
+      state = state.copyWith(
+          transcription: TranscriptionDb.initial(), isLoading: false);
     }
   }
 }

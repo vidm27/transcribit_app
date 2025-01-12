@@ -2,6 +2,7 @@ import 'dart:developer';
 
 import 'package:go_router/go_router.dart';
 import 'package:transcribit_app/features/features.dart';
+import 'package:transcribit_app/features/recording/pages/recording_page.dart';
 import 'package:transcribit_app/features/transcription/pages/transcription_detail_page.dart';
 
 import '../../features/transcription/pages/pages.dart';
@@ -27,5 +28,6 @@ final appRouter = GoRouter(
         return TranscriptionDetailPage(idTranscription: id);
       },
     ),
+    GoRoute(path: '/recording', name: RecordingPage.name, builder: (context, state) => const RecordingPage()),
   ],
 );

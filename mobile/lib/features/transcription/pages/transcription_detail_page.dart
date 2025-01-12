@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -43,6 +42,14 @@ class _TranscriptionDetailPageState
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
+        actions: [
+          IconButton(
+            onPressed: () {
+              context.go('/');
+            },
+            icon: const Icon(Icons.home),
+          ),
+        ],
         title: isEditing
             ? TextFormField(
                 initialValue: transcriptionState.transcription.title,
@@ -116,7 +123,7 @@ class _TranscriptionDetailPageState
                         topRight: Radius.circular(15.0)),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.grey.withOpacity(0.5),
+                        color: Colors.grey.withAlpha((0.5 * 255).toInt()),
                         spreadRadius: 5,
                         blurRadius: 7,
                         offset: const Offset(0, 3),
@@ -190,7 +197,7 @@ class _TranscriptionDetailPageState
                   topRight: Radius.circular(15.0)),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.grey.withOpacity(0.5),
+                  color: Colors.grey.withAlpha((0.5 * 255).toInt()),
                   spreadRadius: 5,
                   blurRadius: 7,
                   offset: const Offset(0, 3),
@@ -373,7 +380,7 @@ class _TranscriptionAudioWidget extends ConsumerWidget {
     final audioController = ref.read(audioPlayerProvider.notifier);
 
     ref.listen(audioPlayerProvider, (previous, next) {
-      if (audioPlayerState.duration == Duration.zero) {
+      if (previous?.duration == Duration.zero && next.duration != Duration.zero) {
         audioController.setDuration(tiempoToDuration(duration));
       }
     });
@@ -381,6 +388,8 @@ class _TranscriptionAudioWidget extends ConsumerWidget {
     final maxDuration = audioPlayerState.duration.inSeconds.toDouble() > 0
         ? audioPlayerState.duration.inSeconds.toDouble()
         : 1.0;
+
+    final sliderValue = audioPlayerState.position.inSeconds.toDouble().clamp(0.0, maxDuration);
 
     return Column(
       children: [
@@ -393,7 +402,7 @@ class _TranscriptionAudioWidget extends ConsumerWidget {
               return Slider(
                 min: 0,
                 max: maxDuration,
-                value: audioPlayerState.position.inSeconds.toDouble(),
+                value: sliderValue,
                 onChanged: (double newValue) async {
                   audioController.seek(Duration(seconds: newValue.toInt()));
                   audioController.play();

@@ -1,139 +1,240 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+// import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
-import 'package:just_audio/just_audio.dart';
+import 'package:transcribit_app/features/transcription/providers/transcription_provider.dart'; // Ensure the spelling is correct
+// import 'package:just_audio/just_audio.dart';
 
-class RecordingPage extends StatefulWidget {
+class RecordingPage extends ConsumerStatefulWidget {
+  static const name = 'recording';
   const RecordingPage({super.key});
 
   @override
-  State<RecordingPage> createState() => _RecordingPageState();
+  ConsumerState<RecordingPage> createState() => _RecordingPageState();
 }
 
-class _RecordingPageState extends State<RecordingPage> {
+class _RecordingPageState extends ConsumerState<RecordingPage> {
   final AudioRecorder audioRecorder = AudioRecorder();
   String? recordingPath;
   bool isRecording = false, isPlaying = false;
-  final AudioPlayer audioPlayer = AudioPlayer();
+  Duration _recordingDuration = Duration.zero;
+  Timer? _timer;
 
   @override
   void initState() {
     super.initState();
-    _initAudio();
+    // _initAudio();
   }
 
   @override
   void dispose() {
     audioRecorder.dispose();
-    audioPlayer.dispose();
+    // audioPlayer.dispose();
     super.dispose();
-  }
-
-  Future<void> _initAudio() async {
-    // Solicitar permiso para acceder al almacenamiento
-    var status = await Permission.storage.request();
-    if (status.isGranted) {
-      // Establecer la ruta del archivo de audio local
-      Directory appDocDir = await getApplicationDocumentsDirectory();
-      String filePath =
-          '${appDocDir.path}/audio_example.mp3'; // Ruta del archivo local
-
-      if (await File(filePath).exists()) {
-        setState(() {
-          recordingPath = filePath;
-        });
-
-        // Configurar el archivo de audio local
-        await audioPlayer.setFilePath(recordingPath!);
-      } else {
-        print("Archivo de audio no encontrado en: $filePath");
-      }
-
-      // Escuchar cambios en el estado del reproductor
-      audioPlayer.playerStateStream.listen((playerState) {
-        if (playerState.processingState == ProcessingState.completed) {
-          setState(() {
-            isPlaying = false;
-          });
-        }
-      });
-    } else {
-      print("Permiso denegado.");
-    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Recorder'),
-      ),
-      floatingActionButton: _recodingButton(),
-      body: _buildUI(),
-    );
-  }
-
-  Widget _recodingButton() {
-    return FloatingActionButton(
-      onPressed: () async {
-        if (isRecording) {
-          final String? filePath = await audioRecorder.stop();
-          if (filePath != null) {
-            setState(() {
-              isRecording = false;
-              recordingPath = filePath;
-            });
-          }
-        } else {
-          if (await audioRecorder.hasPermission()) {
-            final Directory appDir = await getApplicationDocumentsDirectory();
-            final String filePath = path.join(
-              appDir.path,
-              "${DateTime.now()}.m4a",
-            );
-            await audioRecorder.start(const RecordConfig(), path: filePath);
-            setState(() {
-              isRecording = true;
-              recordingPath = null;
-            });
-          }
-        }
-      },
-      child: Icon(isRecording ? Icons.stop : Icons.mic),
-    );
-  }
-
-  Widget _buildUI() {
-    return SizedBox(
-      width: MediaQuery.sizeOf(context).width,
-      child: Column(
-        children: [
-          if (recordingPath != null)
-            MaterialButton(
+        appBar: AppBar(
+          title: const Text('Recorder'),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.save),
               onPressed: () {
-                if (audioPlayer.playing) {
-                  audioPlayer.stop();
-                  setState(() {
-                    isPlaying = false;
-                  });
-                } else {
-                  audioPlayer.setFilePath(recordingPath!);
-                  audioPlayer.play();
-                  setState(() {
-                    isPlaying = true;
-                  });
-                }
+                context.go('/upload');
               },
-              color: Theme.of(context).colorScheme.primary,
-              child: Text(isPlaying ? 'Stop playing' : 'Start playing'),
-            ),
-          if (recordingPath == null) const Text('No recording found'),
-        ],
-      ),
-    );
+            )
+          ],
+        ),
+        body: SizedBox(
+          height: double.infinity,
+          width: double.infinity,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Center(
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      if (isRecording) ...animatedHeartRecording(),
+                      GestureDetector(
+                        onTap: () async {
+                          if (isRecording) {
+                            await _stopRecording();
+                          } else {
+                            await _startRecording();
+                          }
+                        },
+                        child: Container(
+                          height: 70,
+                          width: 70,
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Color(0xFFD76060),
+                          ),
+                          child: const Icon(
+                            Icons.mic,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const Spacer(),
+              Container(
+                color: const Color(0xFF607EFF),
+                width: double.infinity,
+                padding: const EdgeInsets.all(10.0),
+                height: 100,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    GestureDetector(
+                      onTap: () {
+                        if (isRecording) {
+                          audioRecorder.pause();
+                          setState(() {
+                            isRecording = false;
+                          });
+                        }
+                      },
+                      child: const CircleAvatar(
+                        radius: 20.0,
+                        backgroundColor: Color(0xFF222F6E),
+                        child: Icon(
+                          Icons.pause,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(
+                      width: 10.0,
+                    ),
+                    GestureDetector(
+                      onTap: () async {
+                        if (isRecording) {
+                          await _stopRecording();
+                        }
+                      },
+                      child: const CircleAvatar(
+                        radius: 30.0,
+                        backgroundColor: Color(0xFF222F6E),
+                        child: Icon(
+                          Icons.stop,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(
+                      width: 10.0,
+                    ),
+                    Text(
+                      _recordingDuration
+                          .toString()
+                          .split('.')
+                          .first
+                          .padLeft(8, "0"),
+                      style:
+                          const TextStyle(color: Colors.white, fontSize: 25.0),
+                    )
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ));
+  }
+
+  List<Widget> animatedHeartRecording() {
+    return [
+      Container(
+        height: 110,
+        width: 110,
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          color: Color(0xFFFDEBEB),
+        ),
+      )
+          .animate(
+            onPlay: (controller) => controller.repeat(reverse: true),
+          )
+          .fadeIn(
+            duration: 600.ms,
+          )
+          .scale(
+            duration: 600.ms,
+            begin: const Offset(1.0, 1.0),
+            end: const Offset(1.3, 1.3),
+          ),
+      Container(
+        height: 90,
+        width: 90,
+        decoration: const BoxDecoration(
+            color: Color(0xFFFCDEDE), shape: BoxShape.circle),
+      )
+          .animate(
+            onPlay: (controller) => controller.repeat(reverse: true),
+          )
+          .fadeIn(
+            duration: 600.ms,
+          )
+          .scale(
+            duration: 600.ms,
+            begin: const Offset(1.0, 1.0),
+            end: const Offset(1.2, 1.2),
+          )
+    ];
+  }
+
+  void _stopTimer() {
+    _timer?.cancel();
+  }
+
+  void _startTimer() {
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      setState(() {
+        _recordingDuration += const Duration(seconds: 1);
+      });
+    });
+  }
+
+  Future<void> _startRecording() async {
+    if (await audioRecorder.hasPermission()) {
+      final Directory appDocDir = await getApplicationDocumentsDirectory();
+      final String filePath = path.join(
+          appDocDir.path, "${DateTime.now().millisecondsSinceEpoch}.m4a");
+      setState(() {
+        isRecording = true;
+        _recordingDuration = Duration.zero;
+      });
+      await audioRecorder.start(const RecordConfig(), path: filePath);
+      _startTimer();
+    }
+  }
+
+  Future<void> _stopRecording() async {
+    if (isRecording) {
+      String? currentPath = await audioRecorder.stop();
+      setState(() {
+        isRecording = false;
+        recordingPath = currentPath;
+      });
+      _stopTimer();
+      ref.read(transcriptionProvider.notifier).setFilePath(recordingPath!);
+    }
   }
 }
